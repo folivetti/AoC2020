@@ -14,6 +14,7 @@ cabal-version:       >=1.10
 extra-source-files:  README.md
 
 executable day08
+  ghc-options:         -O2
   hs-source-dirs:      src
   other-modules:       Algebra
   main-is:             Main.hs

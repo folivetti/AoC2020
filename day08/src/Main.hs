@@ -48,26 +48,28 @@ doesItTerminate (ConsF (loc, acc) n) = fs
       | loc `member` set = (False, 0)
       | otherwise        = (+acc) <$> n (insert loc set)
 
-hyloTerminate :: Code -> (Bool, Int)
-hyloTerminate code = hylo doesItTerminate (codeSequence code) (0,0) empty
+hyloTerminate :: Code -> (Int,Int) -> (Bool, Int)
+hyloTerminate code s0 = hylo doesItTerminate (codeSequence code) s0 empty
 
 findFix :: Array Int OP -> Int
-findFix code = go code lo
+findFix code = go code lo 0
   where
-    (lo, hi) = bounds code
+    (lo, hi)     = bounds code
     changeAt c x = case c ! x of
-                        ACC _ -> (True , code)
-                        NOP n -> (False, code // [(x,JMP n)])
-                        JMP n -> (False, code // [(x,NOP n)])
+                        ACC _ -> code 
+                        NOP n -> code // [(x,JMP n)]
+                        JMP n -> code // [(x,NOP n)]
 
-    go code x
+    go code x acc 
       | x > hi    = error "no fix found"
-      | isAcc     = go code (x+1)
-      | term      = acc
-      | otherwise = go code (x+1)
+      | term      = acc'
+      | otherwise = case code ! x of
+                         ACC n -> go code (x+1) (acc+n)
+                         NOP _ -> go code (x+1) acc
+                         JMP n -> go code (x+n) acc
       where
-        (isAcc, code') = code `changeAt` x
-        (term, acc)    = hyloTerminate code'
+        code'        = code `changeAt` x
+        (term, acc') = hyloTerminate code' (x, acc)
 
 main :: IO ()
 main = do
