@@ -48,28 +48,40 @@ doesItTerminate (ConsF (loc, acc) n) = fs
       | loc `member` set = (False, 0)
       | otherwise        = (+acc) <$> n (insert loc set)
 
-hyloTerminate :: Code -> (Int,Int) -> (Bool, Int)
-hyloTerminate code s0 = hylo doesItTerminate (codeSequence code) s0 empty
-
-findFix :: Array Int OP -> Int
-findFix code = go code lo 0
+codeBranch :: Code -> CoAlgebra (TreeF (Int, Int)) (Int, Int, Bool)
+codeBranch code (loc, acc, b)
+  | loc > snd (bounds code) = LeafF
+  | otherwise = case code ! loc of
+                     ACC x -> SingleF (loc, acc) (loc+1, x, b)
+                     NOP x -> nextNode b (NOP x)
+                     JMP x -> nextNode b (JMP x)
   where
-    (lo, hi)     = bounds code
-    changeAt c x = case c ! x of
-                        ACC _ -> code 
-                        NOP n -> code // [(x,JMP n)]
-                        JMP n -> code // [(x,NOP n)]
+    nextNode True (NOP x)  = SingleF (loc, acc) (loc+1, 0, True)
+    nextNode True (JMP x)  = SingleF (loc, acc) (loc+x, 0, True)
+    nextNode False (NOP x) = DoubleF (loc, acc) (loc+1, 0, False) (loc+x, 0, True)
+    nextNode False (JMP x) = DoubleF (loc, acc) (loc+x, 0, False) (loc+1, 0, True)
 
-    go code x acc 
-      | x > hi    = error "no fix found"
-      | term      = acc'
-      | otherwise = case code ! x of
-                         ACC n -> go code (x+1) (acc+n)
-                         NOP _ -> go code (x+1) acc
-                         JMP n -> go code (x+n) acc
-      where
-        code'        = code `changeAt` x
-        (term, acc') = hyloTerminate code' (x, acc)
+
+firstJust :: Maybe a -> Maybe a -> Maybe a
+firstJust (Just x) _ = Just x
+firstJust _ y        = y
+
+codeFix :: Algebra (TreeF (Int, Int)) (IntSet -> Maybe Int)
+codeFix LeafF                  = const (Just 0)
+codeFix (SingleF (loc, acc) n) = fs
+  where
+    fs set
+      | loc `member` set = Nothing 
+      | otherwise        = (+acc) <$> n (insert loc set)
+codeFix (DoubleF (loc, acc) l r) = fs
+  where
+    fs set
+      | loc `member` set = Nothing
+      | otherwise        = let set' = insert loc set
+                               l'   = (+acc) <$> l set'
+                               r'   = (+acc) <$> r set'
+                           in  firstJust l' r' 
+
 
 main :: IO ()
 main = do
@@ -79,4 +91,4 @@ main = do
     n       = length ops
     code    = array (0,n-1) $ zip [0..] ops
   print $ hyloFindDup code
-  print $ findFix code
+  print $ hylo codeFix (codeBranch code) (0,0, False) empty
