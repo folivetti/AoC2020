@@ -15,7 +15,7 @@ count _ _     NilF         = [1]
 -- adapters x+1, x+2, x+3, if they are within the range
 count n jolts (ConsF x xs) = tot : xs
   where
-    -- we can't got beyond index n 
+    -- we can't get beyond index n 
     rng  = filter (<n) [x+1..x+3]
     jolt = jolts !! x
     tot = foldr sum' 0 rng 
