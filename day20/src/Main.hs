@@ -17,8 +17,11 @@ printTile = putStrLn . unlines
 
 -- Part 1
 toBorders :: [String] -> [String]
-toBorders css = map (\b -> min b (reverse b)) [head css, last css, map head css, map last css]
+toBorders css = map hashOrientation [head css, last css, map head css, map last css]
+  where
+    hashOrientation b = min b (reverse b)
 
+-- count how many coincident hashed borders we have    
 count :: IntMap [String] -> [String] -> Int
 count borders b = length $ filter null $ map matches b
   where
@@ -32,35 +35,42 @@ vertRotation board = [board, reverse board]
 allRotations :: [[a]] -> [[[a]]]
 allRotations board = vertRotation board >>= horizontal
   where
-    horizontal = take 4 . iterate (transpose . reverse)
+    horizontal xs = map ($xs) [id, transpose.reverse, reverse.map reverse, transpose.map reverse]
 
+-- try to merge some block from ys on top or bottom of xs
+-- if it fails it returns []
 mergeNext :: [String] -> [String] -> [String]
 mergeNext xs ys = safeHead merged 
   where
     safeHead []     = []
     safeHead (xs:_) = xs
 
-    reorder x y = reverse (tail x) ++ tail y    
-    merged      = [reorder x y | x  <- vertRotation xs
-                               , y  <- allRotations ys
-                               , head x == head y]
+    reorder x y = reverse (tail x) ++ tail y    -- remove the connecting borders
+    merged      = [reorder x y | x  <- vertRotation xs -- check if matches the top or bottom 
+                               , y  <- allRotations ys -- rotate ys at will 
+                               , head x == head y]     -- it matches 
 
+-- creates a single column     
 mergeColumn :: [[String]] -> [[String]]
 mergeColumn (b:bs) = go bs []
   where
-    go [] xs     = reverse (b:xs)
-    go (y:ys) xs = case mergeNext b y of
-                        []  -> go ys (y:xs)
-                        z   -> mergeColumn (z : (reverse xs ++ ys))
+    go [] xs     = reverse (b:xs)         -- restore the order of the stack 
+    go (y:ys) xs = case mergeNext b y of  -- try to stack y in b 
+                        []  -> go ys (y:xs) -- if it doesn't succeed, try the next but keep y in the unused stack 
+                        z   -> mergeColumn (z : (reverse xs ++ ys)) -- if it does, restore the unused stack and call it again
 
 merge :: [[String]] -> [String]
-merge [board] = removeBorder board
-merge boards  = let boards' = mergeColumn boards  -- try to add a new column
-                in  if length boards == length boards'  -- if we don't succeed
-                    then merge . map transpose $ boards' -- transpose and add a new row 
-                    else merge boards'                   -- else, keep inserting columns
+merge [board] = board
+merge boards
+  | length boards == length boards' = merge . map transpose $ boards' -- no more columns, merge rows 
+  | otherwise                       = merge boards'                   -- keep inserting columns
+  where
+    boards' = mergeColumn boards -- try to create a new column 
 
+removeUpBottom :: [a] -> [a]
 removeUpBottom = init.tail
+
+removeBorder :: [[a]] -> [[a]]
 removeBorder   = map removeUpBottom . removeUpBottom
 
 -- monster detection system 
@@ -98,6 +108,6 @@ main = do
       part1   = product $ M.keys $ M.filter (==2) $ M.map (count borders) borders
 
       boards  = map snd dat
-      board   = merge boards
+      board   = removeBorder $ merge boards
   print part1
   print $ countNotMonster board
