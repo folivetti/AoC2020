@@ -28,9 +28,8 @@ play' p1 p2 = go p1 p2 S.empty
                                   P1 -> go (xs ++ [x,y]) ys (insert (p1,p2) s)
                                   P2 -> go xs (ys ++ [y,x]) (insert (p1,p2) s)
     winner (x:xs) (y:ys)
-      | x <= length xs && y <= length ys = case play' (take x xs) (take y ys) of
-                                                Left  _ -> P1
-                                                Right _ -> P2
+      | x <= length xs && y <= length ys = either (const P1) (const P2)
+                                         $ play' (take x xs) (take y ys)
       | x > y                            = P1 
       | x < y                            = P2
 

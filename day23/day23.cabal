@@ -1,8 +1,8 @@
-name:                day22
+name:                day23
 version:             0.1.0.0
 -- synopsis:
 -- description:
-homepage:            https://github.com/githubuser/day22#readme
+homepage:            https://github.com/githubuser/day23#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Author name here
@@ -13,9 +13,9 @@ build-type:          Simple
 cabal-version:       >=1.10
 extra-source-files:  README.md
 
-executable day22
+executable day23
   hs-source-dirs:      src
-  ghc-options:         -O2 -optc-O3
+  ghc-options:         -O2 -optc-O2
   main-is:             Main.hs
   default-language:    Haskell2010
-  build-depends:       base >= 4.7 && < 5, containers
+  build-depends:       base >= 4.7 && < 5, array
